@@ -1,0 +1,56 @@
+{
+  "agents": {
+    "orchestrator": {
+      "name": "Master Orchestrator",
+      "model": "claude-opus-4",
+      "capabilities": ["task_decomposition", "coordination", "synthesis"],
+      "priority": "critical",
+      "max_concurrent_tasks": 10
+    },
+    "research": {
+      "name": "Research Agent",
+      "model": "claude-opus-4",
+      "capabilities": ["web_search", "document_analysis", "data_collection"],
+      "tools": ["WebSearch", "WebFetch", "mcp__vertex-ai-server__answer_query_websearch"],
+      "priority": "high"
+    },
+    "code_generator": {
+      "name": "Code Generation Agent",
+      "model": "openai-o3",
+      "capabilities": ["code_generation", "algorithm_optimization", "refactoring"],
+      "languages": ["python", "javascript", "typescript", "rust", "go"],
+      "priority": "high"
+    },
+    "analyzer": {
+      "name": "Analysis Agent", 
+      "model": "claude-opus-4",
+      "capabilities": ["code_review", "performance_analysis", "security_audit"],
+      "tools": ["Grep", "Read", "mcp__filesystem__read_multiple_files"],
+      "priority": "medium"
+    },
+    "tester": {
+      "name": "Testing Agent",
+      "model": "claude-opus-4",
+      "capabilities": ["test_generation", "test_execution", "coverage_analysis"],
+      "tools": ["Bash", "mcp__terminal-controller__execute_command"],
+      "priority": "medium"
+    }
+  },
+  "communication": {
+    "message_queue": {
+      "type": "in-memory",
+      "max_queue_size": 1000,
+      "timeout_ms": 30000
+    },
+    "event_bus": {
+      "type": "event-emitter",
+      "max_listeners": 100
+    }
+  },
+  "execution": {
+    "max_parallel_agents": 5,
+    "task_timeout_minutes": 30,
+    "retry_attempts": 3,
+    "retry_delay_ms": 1000
+  }
+}

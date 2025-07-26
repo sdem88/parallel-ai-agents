@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent System - Параллельные AI Агенты</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass { backdrop-filter: blur(10px); background: rgba(255, 255, 255, 0.1); }
+        .agent-card { transition: all 0.3s ease; }
+        .agent-card:hover { transform: translateY(-4px); }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <div id="app">
+        <!-- Header -->
+        <header class="glass border-b border-gray-700 sticky top-0 z-50">
+            <div class="container mx-auto px-4 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">
+                            🤖 Agent System
+                        </h1>
+                        <span class="text-sm text-gray-400">Параллельные AI Агенты</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <div :class="['w-3 h-3 rounded-full', isConnected ? 'bg-green-500' : 'bg-red-500']"></div>
+                            <span class="text-sm">{{ isConnected ? 'Подключено' : 'Отключено' }}</span>
+                        </div>
+                        <button @click="showStatus = !showStatus" class="px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700">
+                            📊 Статус
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Status Panel -->
+        <div v-if="showStatus" class="glass border-b border-gray-700 py-4">
+            <div class="container mx-auto px-4">
+                <div class="grid grid-cols-4 gap-4">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">{{ status.total_agents || 0 }}</div>
+                        <div class="text-sm text-gray-400">Всего агентов</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-green-400">{{ status.active_agents || 0 }}</div>
+                        <div class="text-sm text-gray-400">Активных</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-blue-400">{{ status.total_tasks_completed || 0 }}</div>
+                        <div class="text-sm text-gray-400">Задач выполнено</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">{{ status.websocket_connections || 0 }}</div>
+                        <div class="text-sm text-gray-400">Подключений</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container mx-auto px-4 py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Agents Panel -->
+                <div class="lg:col-span-1">
+                    <h2 class="text-xl font-semibold mb-4">👥 Агенты</h2>
+                    <div class="space-y-3">
+                        <div v-for="agent in agents" :key="agent.id" 
+                             class="agent-card glass border border-gray-700 rounded-xl p-4 cursor-pointer"
+                             :class="{'ring-2 ring-blue-500': selectedAgent === agent.id}"
+                             @click="selectAgent(agent.id)">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="font-semibold">{{ agent.name }}</h3>
+                                    <p class="text-sm text-gray-400">{{ agent.skills.join(', ') }}</p>
+                                </div>
+                                <div :class="['px-3 py-1 rounded-full text-xs', 
+                                            agent.status === 'working' ? 'bg-green-500/20 text-green-400 pulse' : 'bg-gray-700 text-gray-400']">
+                                    {{ agent.status === 'working' ? 'Работает' : 'Свободен' }}
+                                </div>
+                            </div>
+                            <div v-if="agent.current_task" class="mt-2 text-sm text-yellow-400">
+                                📌 {{ agent.current_task }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Task Panel -->
+                <div class="lg:col-span-2">
+                    <div class="mb-6">
+                        <h2 class="text-xl font-semibold mb-4">🚀 Создать задачи</h2>
+                        
+                        <!-- Templates -->
+                        <div class="mb-4">
+                            <h3 class="text-sm font-medium text-gray-400 mb-2">Шаблоны</h3>
+                            <div class="flex flex-wrap gap-2">
+                                <button v-for="template in templates" :key="template.name"
+                                        @click="loadTemplate(template)"
+                                        class="px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 text-sm">
+                                    {{ template.name }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Task Form -->
+                        <div class="glass border border-gray-700 rounded-xl p-4">
+                            <div class="space-y-4">
+                                <div v-for="(task, index) in tasks" :key="index" class="flex gap-2">
+                                    <select v-model="task.agent" class="flex-1 bg-gray-800 rounded-lg px-4 py-2">
+                                        <option value="">Выберите агента</option>
+                                        <option v-for="agent in agents" :key="agent.id" :value="agent.id">
+                                            {{ agent.name }}
+                                        </option>
+                                    </select>
+                                    <input v-model="task.task" 
+                                           type="text" 
+                                           placeholder="Описание задачи"
+                                           class="flex-2 bg-gray-800 rounded-lg px-4 py-2">
+                                    <button @click="removeTask(index)" 
+                                            class="px-3 py-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30">
+                                        ❌
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4 flex justify-between items-center">
+                                <button @click="addTask" class="px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700">
+                                    ➕ Добавить задачу
+                                </button>
+                                
+                                <div class="flex gap-2">
+                                    <select v-model="executionMode" class="bg-gray-800 rounded-lg px-4 py-2">
+                                        <option value="parallel">⚡ Параллельно</option>
+                                        <option value="sequential">📝 Последовательно</option>
+                                    </select>
+                                    
+                                    <button @click="executeTasks" 
+                                            :disabled="!hasValidTasks"
+                                            class="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        🚀 Запустить
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results -->
+                    <div>
+                        <h2 class="text-xl font-semibold mb-4">📊 Результаты</h2>
+                        <div class="space-y-3 max-h-96 overflow-y-auto">
+                            <div v-for="result in sortedResults" :key="result.task_id"
+                                 class="glass border border-gray-700 rounded-xl p-4">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <span class="font-semibold">{{ getAgentName(result.agent) }}</span>
+                                            <span class="text-xs text-gray-400">{{ formatTime(result.timestamp) }}</span>
+                                        </div>
+                                        <p class="text-sm text-gray-300 mb-2">📋 {{ result.task }}</p>
+                                        <p class="text-sm">{{ result.result }}</p>
+                                    </div>
+                                    <div :class="['px-3 py-1 rounded-full text-xs', 
+                                                result.status === 'completed' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400']">
+                                        {{ result.status === 'completed' ? 'Выполнено' : 'В процессе' }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    apiUrl: window.location.hostname === 'localhost' 
+                        ? 'http://localhost:8000' 
+                        : `${window.location.protocol}//${window.location.hostname}:${window.location.port || (window.location.protocol === 'https:' ? 443 : 80)}`,
+                    ws: null,
+                    isConnected: false,
+                    showStatus: false,
+                    agents: [],
+                    selectedAgent: null,
+                    tasks: [{ agent: '', task: '' }],
+                    executionMode: 'parallel',
+                    results: [],
+                    templates: [],
+                    status: {}
+                };
+            },
+            computed: {
+                hasValidTasks() {
+                    return this.tasks.some(t => t.agent && t.task);
+                },
+                sortedResults() {
+                    return [...this.results].reverse();
+                }
+            },
+            methods: {
+                async loadAgents() {
+                    try {
+                        const response = await axios.get(`${this.apiUrl}/agents`);
+                        this.agents = response.data.agents;
+                    } catch (error) {
+                        console.error('Failed to load agents:', error);
+                    }
+                },
+                async loadTemplates() {
+                    try {
+                        const response = await axios.get(`${this.apiUrl}/templates`);
+                        this.templates = response.data.templates;
+                    } catch (error) {
+                        console.error('Failed to load templates:', error);
+                    }
+                },
+                async loadStatus() {
+                    try {
+                        const response = await axios.get(`${this.apiUrl}/status`);
+                        this.status = response.data;
+                    } catch (error) {
+                        console.error('Failed to load status:', error);
+                    }
+                },
+                async loadHistory() {
+                    try {
+                        const response = await axios.get(`${this.apiUrl}/history?limit=20`);
+                        this.results = response.data.history;
+                    } catch (error) {
+                        console.error('Failed to load history:', error);
+                    }
+                },
+                selectAgent(agentId) {
+                    this.selectedAgent = agentId;
+                },
+                addTask() {
+                    this.tasks.push({ agent: '', task: '' });
+                },
+                removeTask(index) {
+                    this.tasks.splice(index, 1);
+                    if (this.tasks.length === 0) {
+                        this.addTask();
+                    }
+                },
+                loadTemplate(template) {
+                    this.tasks = template.tasks.map(t => ({ ...t }));
+                },
+                async executeTasks() {
+                    const validTasks = this.tasks.filter(t => t.agent && t.task);
+                    if (validTasks.length === 0) return;
+
+                    try {
+                        const response = await axios.post(`${this.apiUrl}/batch`, {
+                            tasks: validTasks,
+                            execution_mode: this.executionMode
+                        });
+                        
+                        // Очистить форму
+                        this.tasks = [{ agent: '', task: '' }];
+                        
+                        // Обновить статус
+                        await this.loadStatus();
+                        await this.loadAgents();
+                    } catch (error) {
+                        console.error('Failed to execute tasks:', error);
+                        alert('Ошибка выполнения задач');
+                    }
+                },
+                getAgentName(agentId) {
+                    const agent = this.agents.find(a => a.id === agentId);
+                    return agent ? agent.name : agentId;
+                },
+                formatTime(timestamp) {
+                    const date = new Date(timestamp);
+                    return date.toLocaleTimeString('ru-RU');
+                },
+                connectWebSocket() {
+                    const wsUrl = this.apiUrl.replace('http', 'ws') + '/ws';
+                    this.ws = new WebSocket(wsUrl);
+                    
+                    this.ws.onopen = () => {
+                        this.isConnected = true;
+                        console.log('WebSocket connected');
+                    };
+                    
+                    this.ws.onclose = () => {
+                        this.isConnected = false;
+                        console.log('WebSocket disconnected');
+                        // Переподключение через 3 секунды
+                        setTimeout(() => this.connectWebSocket(), 3000);
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.results.unshift(data);
+                        // Ограничить количество результатов
+                        if (this.results.length > 50) {
+                            this.results = this.results.slice(0, 50);
+                        }
+                        // Обновить статус агентов
+                        this.loadAgents();
+                        this.loadStatus();
+                    };
+                }
+            },
+            mounted() {
+                this.loadAgents();
+                this.loadTemplates();
+                this.loadStatus();
+                this.loadHistory();
+                this.connectWebSocket();
+                
+                // Обновлять статус каждые 5 секунд
+                setInterval(() => {
+                    this.loadStatus();
+                    this.loadAgents();
+                }, 5000);
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: universal-ai-agents
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "cd backend && python ultimate_backend.py"
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: PYTHONUNBUFFERED  
+        value: 1
+    scaling:
+      minInstances: 1
+      maxInstances: 1

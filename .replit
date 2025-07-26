@@ -1,11 +1,11 @@
-run = "cd backend && python enhanced_app.py"
+run = "cd backend && python ultimate_backend.py"
 modules = ["python-3.10:v18-20230807-322e88b"]
 
 [nix]
 channel = "stable-23_05"
 
 [deployment]
-run = ["sh", "-c", "cd backend && python enhanced_app.py"]
+run = ["sh", "-c", "cd backend && python ultimate_backend.py"]
 
 [[ports]]
 localPort = 8000

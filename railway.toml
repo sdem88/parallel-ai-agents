@@ -1,0 +1,16 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+startCommand = "cd backend && python ultimate_backend.py"
+
+[services.web]
+port = 8000
+
+[variables]
+PORT = "8000"
+PYTHONUNBUFFERED = "1"

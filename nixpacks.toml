@@ -1,0 +1,12 @@
+[providers]
+python = "3.10"
+
+[phases.build]
+cmds = ["pip install -r requirements.txt"]
+
+[phases.start]
+cmd = "cd backend && python ultimate_backend.py"
+
+[variables]
+PORT = "8000"
+PYTHONUNBUFFERED = "1"

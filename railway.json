@@ -3,9 +3,9 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "cd backend && python enhanced_app.py",
-    "healthcheckPath": "/",
-    "healthcheckTimeout": 100,
+    "startCommand": "cd backend && python ultimate_backend.py",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }

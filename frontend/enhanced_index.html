@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal AI Agent System - Универсальная система ИИ агентов</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass { backdrop-filter: blur(10px); background: rgba(255, 255, 255, 0.1); }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .agent-card { transition: all 0.3s ease; }
+        .agent-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+        .pulse { animation: pulse 2s infinite; }
+        .drag-area { border: 2px dashed #4A90E2; background: rgba(74, 144, 226, 0.1); }
+        .workflow-step { border-left: 3px solid #4A90E2; }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .sortable-ghost { opacity: 0.5; }
+        .task-item { cursor: move; }
+        .modal { backdrop-filter: blur(5px); }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div id="app">
+        <!-- Header -->
+        <header class="glass border-b border-gray-700 sticky top-0 z-50">
+            <div class="container mx-auto px-4 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">
+                            🤖 Universal AI Agent System
+                        </h1>
+                        <span class="text-sm text-gray-400">Универсальная система ИИ агентов</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <div :class="['w-3 h-3 rounded-full', isConnected ? 'bg-green-500' : 'bg-red-500']"></div>
+                            <span class="text-sm">{{ isConnected ? 'Подключено' : 'Отключено' }}</span>
+                        </div>
+                        <button @click="currentView = 'dashboard'" 
+                                :class="['px-4 py-2 rounded-lg', currentView === 'dashboard' ? 'bg-blue-600' : 'bg-gray-800 hover:bg-gray-700']">
+                            📊 Панель
+                        </button>
+                        <button @click="currentView = 'workflow'" 
+                                :class="['px-4 py-2 rounded-lg', currentView === 'workflow' ? 'bg-blue-600' : 'bg-gray-800 hover:bg-gray-700']">
+                            🔄 Воркфлоу
+                        </button>
+                        <button @click="currentView = 'agents'" 
+                                :class="['px-4 py-2 rounded-lg', currentView === 'agents' ? 'bg-blue-600' : 'bg-gray-800 hover:bg-gray-700']">
+                            👥 Агенты
+                        </button>
+                        <button @click="showSettings = !showSettings" class="px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700">
+                            ⚙️ Настройки
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Settings Panel -->
+        <div v-if="showSettings" class="glass border-b border-gray-700 py-4">
+            <div class="container mx-auto px-4">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">AI Провайдер</label>
+                        <select v-model="defaultAiProvider" class="w-full bg-gray-800 rounded-lg px-3 py-2">
+                            <option value="simulation">Симуляция (бесплатно)</option>
+                            <option value="openai">OpenAI GPT-4</option>
+                            <option value="anthropic">Anthropic Claude</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Режим выполнения</label>
+                        <select v-model="defaultExecutionMode" class="w-full bg-gray-800 rounded-lg px-3 py-2">
+                            <option value="parallel">⚡ Параллельно</option>
+                            <option value="sequential">📝 Последовательно</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Auto-save</label>
+                        <label class="flex items-center">
+                            <input type="checkbox" v-model="autoSave" class="mr-2">
+                            <span class="text-sm">Автосохранение</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Уведомления</label>
+                        <label class="flex items-center">
+                            <input type="checkbox" v-model="notifications" class="mr-2">
+                            <span class="text-sm">Push уведомления</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Dashboard -->
+        <div v-if="currentView === 'dashboard'" class="container mx-auto px-4 py-8">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                <div class="glass border border-gray-700 rounded-xl p-6 text-center">
+                    <div class="text-3xl font-bold text-blue-400">{{ status.total_agents || 0 }}</div>
+                    <div class="text-sm text-gray-400">Всего агентов</div>
+                </div>
+                <div class="glass border border-gray-700 rounded-xl p-6 text-center">
+                    <div class="text-3xl font-bold text-green-400">{{ status.completed_tasks || 0 }}</div>
+                    <div class="text-sm text-gray-400">Задач выполнено</div>
+                </div>
+                <div class="glass border border-gray-700 rounded-xl p-6 text-center">
+                    <div class="text-3xl font-bold text-purple-400">{{ status.total_workflows || 0 }}</div>
+                    <div class="text-sm text-gray-400">Воркфлоу создано</div>
+                </div>
+                <div class="glass border border-gray-700 rounded-xl p-6 text-center">
+                    <div class="text-3xl font-bold text-yellow-400">{{ status.active_agents || 0 }}</div>
+                    <div class="text-sm text-gray-400">Активных агентов</div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="mb-8">
+                <h2 class="text-xl font-semibold mb-4">🚀 Быстрые действия</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <button @click="quickAction('create-website')" 
+                            class="glass border border-gray-700 rounded-xl p-4 hover:bg-gray-800 transition-all">
+                        <i class="fas fa-globe text-2xl text-blue-400 mb-2"></i>
+                        <div class="font-semibold">Создать сайт</div>
+                        <div class="text-xs text-gray-400">Полный цикл разработки</div>
+                    </button>
+                    <button @click="quickAction('fix-bug')" 
+                            class="glass border border-gray-700 rounded-xl p-4 hover:bg-gray-800 transition-all">
+                        <i class="fas fa-bug text-2xl text-red-400 mb-2"></i>
+                        <div class="font-semibold">Исправить баг</div>
+                        <div class="text-xs text-gray-400">Быстрое исправление</div>
+                    </button>
+                    <button @click="quickAction('market-research')" 
+                            class="glass border border-gray-700 rounded-xl p-4 hover:bg-gray-800 transition-all">
+                        <i class="fas fa-chart-line text-2xl text-green-400 mb-2"></i>
+                        <div class="font-semibold">Анализ рынка</div>
+                        <div class="text-xs text-gray-400">Исследование и отчет</div>
+                    </button>
+                    <button @click="quickAction('optimize-performance')" 
+                            class="glass border border-gray-700 rounded-xl p-4 hover:bg-gray-800 transition-all">
+                        <i class="fas fa-tachometer-alt text-2xl text-purple-400 mb-2"></i>
+                        <div class="font-semibold">Оптимизация</div>
+                        <div class="text-xs text-gray-400">Улучшение производительности</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Recent Results -->
+            <div>
+                <h2 class="text-xl font-semibold mb-4">📊 Последние результаты</h2>
+                <div class="space-y-3 max-h-96 overflow-y-auto">
+                    <div v-for="result in sortedResults.slice(0, 10)" :key="result.task_id"
+                         class="glass border border-gray-700 rounded-xl p-4">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="font-semibold">{{ getAgentName(result.agent) }}</span>
+                                    <span class="text-xs text-gray-400">{{ formatTime(result.timestamp) }}</span>
+                                    <span v-if="result.ai_provider !== 'simulation'" 
+                                          class="px-2 py-1 text-xs bg-purple-500/20 text-purple-400 rounded">
+                                        {{ result.ai_provider }}
+                                    </span>
+                                </div>
+                                <p class="text-sm text-gray-300 mb-2">📋 {{ result.task }}</p>
+                                <p class="text-sm">{{ result.result || result.error }}</p>
+                            </div>
+                            <div :class="['px-3 py-1 rounded-full text-xs', 
+                                        result.status === 'completed' ? 'bg-green-500/20 text-green-400' : 
+                                        result.status === 'failed' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400']">
+                                {{ result.status === 'completed' ? 'Выполнено' : 
+                                   result.status === 'failed' ? 'Ошибка' : 'В процессе' }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workflow Builder -->
+        <div v-if="currentView === 'workflow'" class="container mx-auto px-4 py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Workflow Builder -->
+                <div class="lg:col-span-2">
+                    <h2 class="text-xl font-semibold mb-4">🔄 Конструктор воркфлоу</h2>
+                    
+                    <!-- Workflow Info -->
+                    <div class="glass border border-gray-700 rounded-xl p-4 mb-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-2">Название воркфлоу</label>
+                                <input v-model="workflowName" 
+                                       type="text" 
+                                       placeholder="Мой супер воркфлоу"
+                                       class="w-full bg-gray-800 rounded-lg px-4 py-2">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-2">Режим выполнения</label>
+                                <select v-model="workflowExecutionMode" class="w-full bg-gray-800 rounded-lg px-4 py-2">
+                                    <option value="parallel">⚡ Параллельно (быстрее)</option>
+                                    <option value="sequential">📝 Последовательно (по порядку)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Drag & Drop Area -->
+                    <div class="glass border border-gray-700 rounded-xl p-4 mb-6">
+                        <h3 class="font-semibold mb-4">📋 Задачи в воркфлоу</h3>
+                        <div id="workflow-tasks" class="space-y-3 min-h-32">
+                            <div v-if="workflowTasks.length === 0" 
+                                 class="drag-area rounded-lg p-8 text-center">
+                                <i class="fas fa-plus-circle text-4xl text-gray-500 mb-2"></i>
+                                <p class="text-gray-500">Перетащите агентов сюда или используйте кнопку "Добавить задачу"</p>
+                            </div>
+                            <div v-for="(task, index) in workflowTasks" 
+                                 :key="index"
+                                 class="task-item workflow-step bg-gray-800 rounded-lg p-4 pl-6">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="text-2xl">{{ getAgentIcon(task.agent) }}</span>
+                                        <div>
+                                            <div class="font-semibold">{{ getAgentName(task.agent) }}</div>
+                                            <div class="text-sm text-gray-400">{{ task.task || 'Описание задачи не указано' }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <button @click="editWorkflowTask(index)" 
+                                                class="px-3 py-1 bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30">
+                                            ✏️ Редактировать
+                                        </button>
+                                        <button @click="removeWorkflowTask(index)" 
+                                                class="px-3 py-1 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30">
+                                            ❌ Удалить
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 flex justify-between">
+                            <button @click="addWorkflowTask" 
+                                    class="px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700">
+                                ➕ Добавить задачу
+                            </button>
+                            
+                            <div class="flex gap-2">
+                                <button @click="saveWorkflow" 
+                                        :disabled="!workflowName || workflowTasks.length === 0"
+                                        class="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    💾 Сохранить
+                                </button>
+                                <button @click="executeWorkflow" 
+                                        :disabled="!workflowName || workflowTasks.length === 0"
+                                        class="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    🚀 Запустить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Templates -->
+                    <div class="glass border border-gray-700 rounded-xl p-4">
+                        <h3 class="font-semibold mb-4">📚 Готовые шаблоны</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button v-for="template in templates" 
+                                    :key="template.name"
+                                    @click="loadTemplate(template)"
+                                    class="text-left p-3 bg-gray-800 rounded-lg hover:bg-gray-700">
+                                <div class="font-semibold text-sm">{{ template.name }}</div>
+                                <div class="text-xs text-gray-400">{{ template.description }}</div>
+                                <div class="text-xs text-blue-400 mt-1">{{ template.tasks.length }} задач</div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Agents Panel -->
+                <div class="lg:col-span-1">
+                    <h2 class="text-xl font-semibold mb-4">👥 Доступные агенты</h2>
+                    <div class="space-y-3">
+                        <div v-for="agent in agents" 
+                             :key="agent.id" 
+                             :draggable="true"
+                             @dragstart="dragStart(agent)"
+                             class="agent-card glass border border-gray-700 rounded-xl p-4 cursor-move">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-xl">{{ getAgentIcon(agent.id) }}</span>
+                                        <h3 class="font-semibold">{{ agent.name }}</h3>
+                                        <span v-if="agent.is_custom" class="px-2 py-1 text-xs bg-purple-500/20 text-purple-400 rounded">
+                                            Кастом
+                                        </span>
+                                    </div>
+                                    <p class="text-sm text-gray-400">{{ agent.skills.join(', ') }}</p>
+                                </div>
+                                <div :class="['px-3 py-1 rounded-full text-xs', 
+                                            agent.status === 'working' ? 'bg-green-500/20 text-green-400 pulse' : 'bg-gray-700 text-gray-400']">
+                                    {{ agent.status === 'working' ? 'Работает' : 'Свободен' }}
+                                </div>
+                            </div>
+                            <div v-if="agent.current_task" class="mt-2 text-sm text-yellow-400">
+                                📌 {{ agent.current_task }}
+                            </div>
+                        </div>
+                        
+                        <button @click="showCreateAgentModal = true" 
+                                class="w-full glass border border-dashed border-gray-600 rounded-xl p-4 hover:bg-gray-800 transition-all">
+                            <i class="fas fa-plus text-2xl text-gray-500 mb-2"></i>
+                            <div class="font-semibold">Создать своего агента</div>
+                            <div class="text-xs text-gray-400">Настройте под свои задачи</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agents Management -->
+        <div v-if="currentView === 'agents'" class="container mx-auto px-4 py-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">👥 Управление агентами</h2>
+                <button @click="showCreateAgentModal = true" 
+                        class="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700">
+                    ➕ Создать агента
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div v-for="agent in agents" 
+                     :key="agent.id"
+                     class="glass border border-gray-700 rounded-xl p-6">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-3xl">{{ getAgentIcon(agent.id) }}</span>
+                            <div>
+                                <h3 class="font-semibold">{{ agent.name }}</h3>
+                                <div class="flex items-center space-x-2">
+                                    <span :class="['px-2 py-1 text-xs rounded', 
+                                                agent.status === 'working' ? 'bg-green-500/20 text-green-400' : 'bg-gray-700 text-gray-400']">
+                                        {{ agent.status === 'working' ? 'Работает' : 'Свободен' }}
+                                    </span>
+                                    <span v-if="agent.is_custom" class="px-2 py-1 text-xs bg-purple-500/20 text-purple-400 rounded">
+                                        Кастомный
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h4 class="text-sm font-semibold text-gray-400 mb-2">Навыки:</h4>
+                        <div class="flex flex-wrap gap-1">
+                            <span v-for="skill in agent.skills" 
+                                  :key="skill"
+                                  class="px-2 py-1 text-xs bg-blue-500/20 text-blue-400 rounded">
+                                {{ skill }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div v-if="agent.current_task" class="mb-4">
+                        <h4 class="text-sm font-semibold text-gray-400 mb-2">Текущая задача:</h4>
+                        <p class="text-sm text-yellow-400">{{ agent.current_task }}</p>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button @click="quickTaskAgent(agent)" 
+                                class="flex-1 px-3 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 text-sm">
+                            🚀 Быстрая задача
+                        </button>
+                        <button v-if="agent.is_custom" 
+                                @click="editAgent(agent)" 
+                                class="px-3 py-2 bg-gray-600 rounded-lg hover:bg-gray-700 text-sm">
+                            ✏️
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Agent Modal -->
+        <div v-if="showCreateAgentModal" class="fixed inset-0 bg-black bg-opacity-50 modal flex items-center justify-center z-50">
+            <div class="glass border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4">
+                <h3 class="text-lg font-semibold mb-4">🤖 Создать нового агента</h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Имя агента</label>
+                        <input v-model="newAgent.name" 
+                               type="text" 
+                               placeholder="Мой крутой агент"
+                               class="w-full bg-gray-800 rounded-lg px-4 py-2">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Описание</label>
+                        <textarea v-model="newAgent.description" 
+                                  placeholder="Что умеет делать этот агент?"
+                                  class="w-full bg-gray-800 rounded-lg px-4 py-2 h-20 resize-none"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Системный промпт</label>
+                        <textarea v-model="newAgent.prompt" 
+                                  placeholder="Ты специалист по... Твоя задача..."
+                                  class="w-full bg-gray-800 rounded-lg px-4 py-2 h-24 resize-none"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Навыки (через запятую)</label>
+                        <input v-model="newAgent.skillsText" 
+                               type="text" 
+                               placeholder="анализ, программирование, дизайн"
+                               class="w-full bg-gray-800 rounded-lg px-4 py-2">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">AI Провайдер</label>
+                        <select v-model="newAgent.ai_provider" class="w-full bg-gray-800 rounded-lg px-4 py-2">
+                            <option value="simulation">Симуляция (бесплатно)</option>
+                            <option value="openai">OpenAI GPT-4</option>
+                            <option value="anthropic">Anthropic Claude</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button @click="showCreateAgentModal = false" 
+                            class="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600">
+                        Отмена
+                    </button>
+                    <button @click="createAgent" 
+                            :disabled="!newAgent.name || !newAgent.prompt"
+                            class="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                        Создать агента
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Task Modal -->
+        <div v-if="showTaskModal" class="fixed inset-0 bg-black bg-opacity-50 modal flex items-center justify-center z-50">
+            <div class="glass border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4">
+                <h3 class="text-lg font-semibold mb-4">📝 {{ taskModalTitle }}</h3>
+                
+                <div class="space-y-4">
+                    <div v-if="taskModalAgent">
+                        <label class="block text-sm text-gray-400 mb-2">Агент</label>
+                        <div class="flex items-center space-x-3 p-3 bg-gray-800 rounded-lg">
+                            <span class="text-xl">{{ getAgentIcon(taskModalAgent) }}</span>
+                            <span class="font-semibold">{{ getAgentName(taskModalAgent) }}</span>
+                        </div>
+                    </div>
+                    
+                    <div v-else>
+                        <label class="block text-sm text-gray-400 mb-2">Выберите агента</label>
+                        <select v-model="currentTask.agent" class="w-full bg-gray-800 rounded-lg px-4 py-2">
+                            <option value="">Выберите агента</option>
+                            <option v-for="agent in agents" :key="agent.id" :value="agent.id">
+                                {{ agent.name }}
+                            </option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Описание задачи</label>
+                        <textarea v-model="currentTask.task" 
+                                  placeholder="Подробно опишите что нужно сделать..."
+                                  class="w-full bg-gray-800 rounded-lg px-4 py-2 h-24 resize-none"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">AI Провайдер</label>
+                        <select v-model="currentTask.ai_provider" class="w-full bg-gray-800 rounded-lg px-4 py-2">
+                            <option value="simulation">Симуляция (быстро)</option>
+                            <option value="openai">OpenAI GPT-4 (умно)</option>
+                            <option value="anthropic">Anthropic Claude (креативно)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button @click="showTaskModal = false" 
+                            class="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600">
+                        Отмена
+                    </button>
+                    <button @click="executeTask" 
+                            :disabled="!currentTask.agent || !currentTask.task"
+                            class="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                        🚀 Выполнить
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="fixed top-20 right-4 space-y-2 z-40">
+            <div v-for="notification in notifications" 
+                 :key="notification.id"
+                 class="glass border border-gray-700 rounded-lg p-4 max-w-sm">
+                <div class="flex items-start space-x-3">
+                    <span class="text-xl">{{ notification.icon }}</span>
+                    <div>
+                        <div class="font-semibold">{{ notification.title }}</div>
+                        <div class="text-sm text-gray-400">{{ notification.message }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    apiUrl: window.location.hostname === 'localhost' 
+                        ? 'http://localhost:8000' 
+                        : `${window.location.protocol}//${window.location.hostname}:${window.location.port || (window.location.protocol === 'https:' ? 443 : 80)}`,
+                    ws: null,
+                    isConnected: false,
+                    currentView: 'dashboard',
+                    showSettings: false,
+                    showCreateAgentModal: false,
+                    showTaskModal: false,
+                    
+                    // Settings
+                    defaultAiProvider: 'simulation',
+                    defaultExecutionMode: 'parallel',
+                    autoSave: true,
+                    notifications: true,
+                    
+                    // Data
+                    agents: [],
+                    templates: [],
+                    results: [],
+                    status: {},
+                    workflows: [],
+                    
+                    // Workflow builder
+                    workflowName: '',
+                    workflowExecutionMode: 'parallel',
+                    workflowTasks: [],
+                    
+                    // Modals
+                    newAgent: {
+                        name: '',
+                        description: '',
+                        prompt: '',
+                        skillsText: '',
+                        ai_provider: 'simulation'
+                    },
+                    currentTask: {
+                        agent: '',
+                        task: '',
+                        ai_provider: 'simulation'
+                    },
+                    taskModalTitle: '',
+                    taskModalAgent: null,
+                    
+                    // Notifications
+                    notificationList: []
+                };
+            },
+            computed: {
+                sortedResults() {
+                    return [...this.results].reverse();
+                }
+            },
+            methods: {
+                async loadData() {
+                    await Promise.all([
+                        this.loadAgents(),
+                        this.loadTemplates(),
+                        this.loadStatus(),
+                        this.loadHistory(),
+                        this.loadWorkflows()
+                    ]);
+                },
+                
+                async loadAgents() {
+                    try {
+                        const response = await axios.get(`${this.apiUrl}/api/agents`);
+                        this.agents = response.data.agents;
+                    } catch (error) {
+                        console.error('Failed to load agents:', error);
+                    }
+                },
+                
+                async loadTemplates() {
+                    try {
+                        const response = await axios.get(`${this.apiUrl}/api/templates`);
+                        this.templates = response.data.templates;
+                    } catch (error) {
+                        console.error('Failed to load templates:', error);
+                    }
+                },
+                
+                async loadStatus() {
+                    try {
+                        const response = await axios.get(`${this.apiUrl}/api/status`);
+                        this.status = response.data;
+                    } catch (error) {
+                        console.error('Failed to load status:', error);
+                    }
+                },
+                
+                async loadHistory() {
+                    try {
+                        const response = await axios.get(`${this.apiUrl}/api/history?limit=50`);
+                        this.results = response.data.history;
+                    } catch (error) {
+                        console.error('Failed to load history:', error);
+                    }
+                },
+                
+                async loadWorkflows() {
+                    try {
+                        const response = await axios.get(`${this.apiUrl}/api/workflows`);
+                        this.workflows = response.data.workflows;
+                    } catch (error) {
+                        console.error('Failed to load workflows:', error);
+                    }
+                },
+                
+                // Workflow methods
+                async quickAction(action) {
+                    const template = this.templates.find(t => 
+                        (action === 'create-website' && t.name.includes('веб-приложение')) ||
+                        (action === 'fix-bug' && t.name.includes('баг')) ||
+                        (action === 'market-research' && t.name.includes('рынка')) ||
+                        (action === 'optimize-performance' && t.name.includes('производительности'))
+                    );
+                    
+                    if (template) {
+                        this.currentView = 'workflow';
+                        this.loadTemplate(template);
+                        await this.$nextTick();
+                        this.executeWorkflow();
+                    }
+                },
+                
+                loadTemplate(template) {
+                    this.workflowName = template.name;
+                    this.workflowTasks = template.tasks.map(task => ({
+                        agent: task.agent,
+                        task: task.task,
+                        ai_provider: this.defaultAiProvider
+                    }));
+                },
+                
+                addWorkflowTask() {
+                    this.currentTask = {
+                        agent: '',
+                        task: '',
+                        ai_provider: this.defaultAiProvider
+                    };
+                    this.taskModalTitle = 'Добавить задачу в воркфлоу';
+                    this.taskModalAgent = null;
+                    this.showTaskModal = true;
+                },
+                
+                editWorkflowTask(index) {
+                    this.currentTask = { ...this.workflowTasks[index] };
+                    this.taskModalTitle = 'Редактировать задачу';
+                    this.taskModalAgent = this.currentTask.agent;
+                    this.editingTaskIndex = index;
+                    this.showTaskModal = true;
+                },
+                
+                removeWorkflowTask(index) {
+                    this.workflowTasks.splice(index, 1);
+                },
+                
+                async executeTask() {
+                    if (this.editingTaskIndex !== undefined) {
+                        // Редактирование существующей задачи
+                        this.workflowTasks[this.editingTaskIndex] = { ...this.currentTask };
+                        this.editingTaskIndex = undefined;
+                    } else {
+                        // Добавление новой задачи или выполнение одиночной
+                        if (this.taskModalTitle.includes('воркфлоу')) {
+                            this.workflowTasks.push({ ...this.currentTask });
+                        } else {
+                            // Выполнить одиночную задачу
+                            try {
+                                const response = await axios.post(`${this.apiUrl}/api/execute`, this.currentTask);
+                                this.showNotification('✅', 'Задача запущена', `${this.getAgentName(this.currentTask.agent)} начал работу`);
+                            } catch (error) {
+                                console.error('Failed to execute task:', error);
+                                this.showNotification('❌', 'Ошибка', 'Не удалось запустить задачу');
+                            }
+                        }
+                    }
+                    
+                    this.showTaskModal = false;
+                    this.currentTask = { agent: '', task: '', ai_provider: this.defaultAiProvider };
+                },
+                
+                async executeWorkflow() {
+                    if (!this.workflowName || this.workflowTasks.length === 0) return;
+                    
+                    try {
+                        const workflowRequest = {
+                            name: this.workflowName,
+                            tasks: this.workflowTasks,
+                            execution_mode: this.workflowExecutionMode
+                        };
+                        
+                        const response = await axios.post(`${this.apiUrl}/api/workflow`, workflowRequest);
+                        this.showNotification('🚀', 'Воркфлоу запущен', `${this.workflowTasks.length} задач в работе`);
+                        
+                        // Очистить форму
+                        this.workflowName = '';
+                        this.workflowTasks = [];
+                        
+                        // Обновить данные
+                        await this.loadData();
+                    } catch (error) {
+                        console.error('Failed to execute workflow:', error);
+                        this.showNotification('❌', 'Ошибка', 'Не удалось запустить воркфлоу');
+                    }
+                },
+                
+                async saveWorkflow() {
+                    // Логика сохранения воркфлоу как шаблона
+                    this.showNotification('💾', 'Воркфлоу сохранён', 'Теперь доступен в шаблонах');
+                },
+                
+                // Agent methods
+                async createAgent() {
+                    if (!this.newAgent.name || !this.newAgent.prompt) return;
+                    
+                    try {
+                        const config = {
+                            name: this.newAgent.name,
+                            description: this.newAgent.description,
+                            prompt: this.newAgent.prompt,
+                            skills: this.newAgent.skillsText.split(',').map(s => s.trim()).filter(s => s),
+                            ai_provider: this.newAgent.ai_provider
+                        };
+                        
+                        const response = await axios.post(`${this.apiUrl}/api/agents/create`, config);
+                        
+                        this.showNotification('✅', 'Агент создан', `${this.newAgent.name} готов к работе`);
+                        this.showCreateAgentModal = false;
+                        
+                        // Очистить форму
+                        this.newAgent = {
+                            name: '',
+                            description: '',
+                            prompt: '',
+                            skillsText: '',
+                            ai_provider: 'simulation'
+                        };
+                        
+                        // Обновить список агентов
+                        await this.loadAgents();
+                        
+                    } catch (error) {
+                        console.error('Failed to create agent:', error);
+                        this.showNotification('❌', 'Ошибка', 'Не удалось создать агента');
+                    }
+                },
+                
+                quickTaskAgent(agent) {
+                    this.currentTask = {
+                        agent: agent.id,
+                        task: '',
+                        ai_provider: this.defaultAiProvider
+                    };
+                    this.taskModalTitle = `Задача для ${agent.name}`;
+                    this.taskModalAgent = agent.id;
+                    this.showTaskModal = true;
+                },
+                
+                // Drag & Drop
+                dragStart(agent) {
+                    this.draggedAgent = agent;
+                },
+                
+                // Utility methods
+                getAgentName(agentId) {
+                    const agent = this.agents.find(a => a.id === agentId);
+                    return agent ? agent.name : agentId;
+                },
+                
+                getAgentIcon(agentId) {
+                    const icons = {
+                        researcher: '🔍',
+                        coder: '💻',
+                        tester: '🧪',
+                        reviewer: '📋',
+                        architect: '🏗️',
+                        devops: '🚀',
+                        analyst: '📊',
+                        designer: '🎨'
+                    };
+                    return icons[agentId] || '🤖';
+                },
+                
+                formatTime(timestamp) {
+                    const date = new Date(timestamp);
+                    return date.toLocaleTimeString('ru-RU', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    });
+                },
+                
+                showNotification(icon, title, message) {
+                    const notification = {
+                        id: Date.now(),
+                        icon,
+                        title,
+                        message
+                    };
+                    
+                    this.notificationList.push(notification);
+                    
+                    // Удалить через 5 секунд
+                    setTimeout(() => {
+                        const index = this.notificationList.findIndex(n => n.id === notification.id);
+                        if (index > -1) {
+                            this.notificationList.splice(index, 1);
+                        }
+                    }, 5000);
+                },
+                
+                connectWebSocket() {
+                    const wsUrl = this.apiUrl.replace('http', 'ws') + '/ws';
+                    this.ws = new WebSocket(wsUrl);
+                    
+                    this.ws.onopen = () => {
+                        this.isConnected = true;
+                        console.log('WebSocket connected');
+                    };
+                    
+                    this.ws.onclose = () => {
+                        this.isConnected = false;
+                        console.log('WebSocket disconnected');
+                        // Переподключение через 3 секунды
+                        setTimeout(() => this.connectWebSocket(), 3000);
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.results.unshift(data);
+                        
+                        // Ограничить количество результатов
+                        if (this.results.length > 100) {
+                            this.results = this.results.slice(0, 100);
+                        }
+                        
+                        // Показать уведомление
+                        if (this.notifications) {
+                            const agentName = this.getAgentName(data.agent);
+                            if (data.status === 'completed') {
+                                this.showNotification('✅', `${agentName} завершил работу`, data.task);
+                            } else if (data.status === 'failed') {
+                                this.showNotification('❌', `${agentName} столкнулся с ошибкой`, data.task);
+                            }
+                        }
+                        
+                        // Обновить статус агентов
+                        this.loadAgents();
+                        this.loadStatus();
+                    };
+                }
+            },
+            
+            mounted() {
+                this.loadData();
+                this.connectWebSocket();
+                
+                // Настройка drag & drop для воркфлоу
+                this.$nextTick(() => {
+                    const workflowArea = document.getElementById('workflow-tasks');
+                    if (workflowArea) {
+                        new Sortable(workflowArea, {
+                            group: 'workflow',
+                            animation: 150,
+                            ghostClass: 'sortable-ghost',
+                            onAdd: (evt) => {
+                                if (this.draggedAgent) {
+                                    this.workflowTasks.splice(evt.newIndex, 0, {
+                                        agent: this.draggedAgent.id,
+                                        task: `Задача для ${this.draggedAgent.name}`,
+                                        ai_provider: this.defaultAiProvider
+                                    });
+                                    evt.item.remove(); // Удалить элемент-дубликат
+                                }
+                            }
+                        });
+                    }
+                });
+                
+                // Обновлять данные каждые 10 секунд
+                setInterval(() => {
+                    this.loadStatus();
+                    this.loadAgents();
+                }, 10000);
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

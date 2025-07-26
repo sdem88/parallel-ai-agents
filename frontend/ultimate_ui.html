@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 AI Agent Universe - Вселенная ИИ Агентов</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/confetti-js@0.0.18/dist/index.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            --danger-gradient: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-muted: rgba(255, 255, 255, 0.5);
+        }
+        
+        body { 
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+        }
+        
+        .glass { 
+            backdrop-filter: blur(20px); 
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .card-hover { 
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            transform-style: preserve-3d;
+        }
+        
+        .card-hover:hover { 
+            transform: translateY(-8px) rotateX(5deg); 
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+        }
+        
+        .agent-card {
+            background: linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .agent-card:hover {
+            background: linear-gradient(145deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 100%);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .pulse-glow { 
+            animation: pulseGlow 2s infinite; 
+        }
+        
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.5); }
+            50% { box-shadow: 0 0 40px rgba(102, 126, 234, 0.8); }
+            100% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.5); }
+        }
+        
+        .floating { animation: floating 3s ease-in-out infinite; }
+        @keyframes floating {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .slide-in { animation: slideIn 0.6s ease-out; }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .fade-in { animation: fadeIn 0.8s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .gradient-text {
+            background: var(--primary-gradient);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .btn-primary {
+            background: var(--primary-gradient);
+            border: none;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-success {
+            background: var(--success-gradient);
+            border: none;
+            color: white;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            position: relative;
+        }
+        
+        .status-working {
+            background: #4ade80;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-idle {
+            background: #6b7280;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .drag-item {
+            cursor: grab;
+            transition: all 0.3s ease;
+        }
+        
+        .drag-item:active {
+            cursor: grabbing;
+            transform: rotate(5deg) scale(1.05);
+        }
+        
+        .drop-zone {
+            border: 2px dashed rgba(102, 126, 234, 0.5);
+            background: rgba(102, 126, 234, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .drop-zone.active {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.2);
+        }
+        
+        .notification {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideInRight 0.5s ease-out;
+        }
+        
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .wizard-step {
+            opacity: 0.5;
+            transform: scale(0.95);
+            transition: all 0.3s ease;
+        }
+        
+        .wizard-step.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+        
+        .progress-bar {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            height: 4px;
+            transition: width 0.5s ease;
+        }
+        
+        /* Мобильная адаптивность */
+        @media (max-width: 768px) {
+            .card-hover:hover {
+                transform: translateY(-4px);
+            }
+            
+            .floating {
+                animation: none;
+            }
+        }
+        
+        /* Темы */
+        .theme-dark {
+            --glass-bg: rgba(0, 0, 0, 0.2);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+        
+        .theme-light {
+            --glass-bg: rgba(255, 255, 255, 0.8);
+            --glass-border: rgba(0, 0, 0, 0.1);
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-white overflow-x-hidden">
+    <div id="app" class="relative">
+        <!-- Animated Background -->
+        <div class="fixed inset-0 z-0">
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-pink-900/20"></div>
+            <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl floating"></div>
+            <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl floating" style="animation-delay: -1s;"></div>
+        </div>
+
+        <!-- Header -->
+        <header class="relative z-50 glass border-b border-white/20 sticky top-0">
+            <div class="container mx-auto px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4 slide-in">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                            <i class="fas fa-robot text-xl text-white"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-2xl font-bold gradient-text">AI Agent Universe</h1>
+                            <p class="text-sm text-white/60">Вселенная искусственного интеллекта</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <!-- Connection Status -->
+                        <div class="flex items-center space-x-2 glass rounded-full px-4 py-2">
+                            <div class="status-indicator" :class="isConnected ? 'status-working' : 'status-idle'"></div>
+                            <span class="text-sm">{{ isConnected ? 'Онлайн' : 'Оффлайн' }}</span>
+                        </div>
+                        
+                        <!-- Navigation -->
+                        <nav class="hidden md:flex space-x-2">
+                            <button v-for="tab in tabs" 
+                                    :key="tab.id"
+                                    @click="currentTab = tab.id"
+                                    :class="['px-4 py-2 rounded-xl transition-all', 
+                                            currentTab === tab.id ? 'btn-primary' : 'glass hover:bg-white/10']">
+                                <i :class="tab.icon" class="mr-2"></i>
+                                {{ tab.name }}
+                            </button>
+                        </nav>
+                        
+                        <!-- Settings -->
+                        <button @click="showSettings = !showSettings" 
+                                class="w-10 h-10 glass rounded-xl flex items-center justify-center hover:bg-white/10">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Mobile Navigation -->
+        <nav class="md:hidden glass border-b border-white/20 relative z-40">
+            <div class="container mx-auto px-6 py-3">
+                <div class="flex space-x-2 overflow-x-auto">
+                    <button v-for="tab in tabs" 
+                            :key="tab.id"
+                            @click="currentTab = tab.id"
+                            :class="['px-4 py-2 rounded-xl whitespace-nowrap transition-all flex-shrink-0', 
+                                    currentTab === tab.id ? 'btn-primary' : 'glass hover:bg-white/10']">
+                        <i :class="tab.icon" class="mr-2"></i>
+                        {{ tab.name }}
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Progress Bar -->
+        <div class="fixed top-0 left-0 w-full h-1 z-50">
+            <div class="progress-bar" :style="{width: progress + '%'}"></div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="relative z-10 container mx-auto px-6 py-8">
+            
+            <!-- Welcome Screen -->
+            <div v-if="currentTab === 'welcome'" class="fade-in">
+                <!-- Hero Section -->
+                <div class="text-center mb-12">
+                    <div class="w-32 h-32 mx-auto mb-8 rounded-3xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center floating">
+                        <i class="fas fa-magic text-6xl text-white"></i>
+                    </div>
+                    <h1 class="text-5xl md:text-7xl font-bold mb-6">
+                        Добро пожаловать в 
+                        <span class="gradient-text">будущее ИИ</span>
+                    </h1>
+                    <p class="text-xl text-white/70 mb-8 max-w-3xl mx-auto">
+                        Создавайте, управляйте и масштабируйте команды ИИ агентов без единой строчки кода. 
+                        Просто перетаскивайте, настраивайте и наблюдайте как магия происходит.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <button @click="startWizard" class="btn-primary px-8 py-4 rounded-2xl text-lg font-semibold">
+                            <i class="fas fa-rocket mr-2"></i>
+                            Начать путешествие
+                        </button>
+                        <button @click="currentTab = 'playground'" class="glass px-8 py-4 rounded-2xl text-lg font-semibold hover:bg-white/10">
+                            <i class="fas fa-play mr-2"></i>
+                            Открыть песочницу
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Features Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+                    <div v-for="feature in features" :key="feature.id" 
+                         class="glass rounded-3xl p-8 card-hover">
+                        <div class="w-16 h-16 rounded-2xl mb-6 flex items-center justify-center"
+                             :style="{background: feature.gradient}">
+                            <i :class="feature.icon" class="text-2xl text-white"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4">{{ feature.title }}</h3>
+                        <p class="text-white/70 mb-6">{{ feature.description }}</p>
+                        <button @click="feature.action" class="text-blue-400 hover:text-blue-300 font-semibold">
+                            {{ feature.buttonText }} →
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div v-for="stat in stats" :key="stat.label" 
+                         class="glass rounded-2xl p-6 text-center">
+                        <div class="text-3xl font-bold gradient-text mb-2">{{ stat.value }}</div>
+                        <div class="text-white/60">{{ stat.label }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Setup Wizard -->
+            <div v-if="currentTab === 'wizard'" class="max-w-4xl mx-auto fade-in">
+                <div class="text-center mb-12">
+                    <h2 class="text-4xl font-bold mb-4">Настройка за 3 минуты</h2>
+                    <p class="text-white/70">Мы поможем настроить вашу идеальную команду ИИ агентов</p>
+                </div>
+
+                <!-- Progress -->
+                <div class="flex justify-center mb-12">
+                    <div class="flex space-x-4">
+                        <div v-for="(step, index) in wizardSteps" :key="index"
+                             :class="['wizard-step w-12 h-12 rounded-full flex items-center justify-center font-bold',
+                                     index <= currentWizardStep ? 'active bg-gradient-to-br from-blue-500 to-purple-600' : 'glass']">
+                            {{ index + 1 }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step Content -->
+                <div class="glass rounded-3xl p-8 min-h-96">
+                    <component :is="'wizard-step-' + currentWizardStep" 
+                               @next="nextWizardStep" 
+                               @prev="prevWizardStep"
+                               :data="wizardData"></component>
+                </div>
+            </div>
+
+            <!-- Playground -->
+            <div v-if="currentTab === 'playground'" class="fade-in">
+                <div class="grid grid-cols-1 xl:grid-cols-4 gap-8">
+                    
+                    <!-- Agent Library -->
+                    <div class="xl:col-span-1">
+                        <div class="glass rounded-3xl p-6 sticky top-24">
+                            <h3 class="text-xl font-bold mb-6 flex items-center">
+                                <i class="fas fa-users mr-3"></i>
+                                Библиотека агентов
+                            </h3>
+                            
+                            <!-- Search -->
+                            <div class="relative mb-6">
+                                <input v-model="agentSearch" 
+                                       type="text" 
+                                       placeholder="Поиск агентов..."
+                                       class="w-full glass rounded-xl px-4 py-3 pl-12 bg-white/5 border-white/10">
+                                <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-white/50"></i>
+                            </div>
+
+                            <!-- Agent List -->
+                            <div class="space-y-3 max-h-96 overflow-y-auto">
+                                <div v-for="agent in filteredAgents" 
+                                     :key="agent.id"
+                                     :draggable="true"
+                                     @dragstart="dragStart(agent)"
+                                     class="agent-card rounded-xl p-4 drag-item">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                                            <span class="text-lg">{{ agent.emoji }}</span>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="font-semibold truncate">{{ agent.name }}</div>
+                                            <div class="text-xs text-white/60 truncate">{{ agent.description }}</div>
+                                        </div>
+                                        <div class="status-indicator" :class="agent.status === 'working' ? 'status-working' : 'status-idle'"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Create Agent -->
+                            <button @click="showCreateAgent = true" 
+                                    class="w-full mt-6 glass rounded-xl p-4 border-2 border-dashed border-white/30 hover:border-white/50 transition-all">
+                                <i class="fas fa-plus mb-2 text-2xl text-white/60"></i>
+                                <div class="text-white/60">Создать агента</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Workflow Canvas -->
+                    <div class="xl:col-span-2">
+                        <div class="glass rounded-3xl p-6 h-full min-h-96">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="text-xl font-bold flex items-center">
+                                    <i class="fas fa-project-diagram mr-3"></i>
+                                    Конструктор воркфлоу
+                                </h3>
+                                <div class="flex space-x-2">
+                                    <button @click="clearWorkflow" class="glass px-4 py-2 rounded-lg hover:bg-white/10">
+                                        <i class="fas fa-trash mr-2"></i>Очистить
+                                    </button>
+                                    <button @click="saveWorkflow" class="btn-success px-4 py-2 rounded-lg">
+                                        <i class="fas fa-save mr-2"></i>Сохранить
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Drop Zone -->
+                            <div class="drop-zone rounded-2xl p-8 min-h-80"
+                                 @dragover.prevent
+                                 @drop="dropAgent"
+                                 :class="{'active': isDragging}">
+                                
+                                <!-- Empty State -->
+                                <div v-if="workflowSteps.length === 0" class="text-center text-white/50">
+                                    <i class="fas fa-magic text-6xl mb-6"></i>
+                                    <h4 class="text-xl font-semibold mb-2">Создайте свой первый воркфлоу</h4>
+                                    <p>Перетащите агентов сюда или выберите готовый шаблон</p>
+                                </div>
+
+                                <!-- Workflow Steps -->
+                                <div v-else class="space-y-4">
+                                    <div v-for="(step, index) in workflowSteps" 
+                                         :key="step.id"
+                                         class="flex items-center space-x-4 p-4 glass rounded-xl">
+                                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold">
+                                            {{ index + 1 }}
+                                        </div>
+                                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                                            <span class="text-xl">{{ step.agent.emoji }}</span>
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="font-semibold">{{ step.agent.name }}</div>
+                                            <div class="text-sm text-white/60">{{ step.task || 'Описание задачи' }}</div>
+                                        </div>
+                                        <div class="flex space-x-2">
+                                            <button @click="editStep(index)" class="w-8 h-8 glass rounded-lg flex items-center justify-center hover:bg-white/10">
+                                                <i class="fas fa-edit text-xs"></i>
+                                            </button>
+                                            <button @click="removeStep(index)" class="w-8 h-8 glass rounded-lg flex items-center justify-center hover:bg-white/10 text-red-400">
+                                                <i class="fas fa-times text-xs"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Execution Controls -->
+                            <div v-if="workflowSteps.length > 0" class="flex items-center justify-between mt-6">
+                                <div class="flex items-center space-x-4">
+                                    <label class="flex items-center space-x-2">
+                                        <input type="radio" v-model="executionMode" value="parallel" class="text-blue-500">
+                                        <span>⚡ Параллельно</span>
+                                    </label>
+                                    <label class="flex items-center space-x-2">
+                                        <input type="radio" v-model="executionMode" value="sequential" class="text-blue-500">
+                                        <span>📝 Последовательно</span>
+                                    </label>
+                                </div>
+                                <button @click="executeWorkflow" 
+                                        :disabled="isExecuting"
+                                        class="btn-primary px-6 py-3 rounded-xl font-semibold">
+                                    <i class="fas fa-play mr-2"></i>
+                                    {{ isExecuting ? 'Выполняется...' : 'Запустить' }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results & Templates -->
+                    <div class="xl:col-span-1">
+                        <div class="space-y-6">
+                            
+                            <!-- Quick Templates -->
+                            <div class="glass rounded-3xl p-6">
+                                <h3 class="text-lg font-bold mb-4 flex items-center">
+                                    <i class="fas fa-templates mr-3"></i>
+                                    Быстрые шаблоны
+                                </h3>
+                                <div class="space-y-3">
+                                    <button v-for="template in quickTemplates" 
+                                            :key="template.id"
+                                            @click="loadTemplate(template)"
+                                            class="w-full text-left p-3 glass rounded-xl hover:bg-white/10 transition-all">
+                                        <div class="font-semibold text-sm">{{ template.name }}</div>
+                                        <div class="text-xs text-white/60">{{ template.steps.length }} шагов</div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Live Results -->
+                            <div class="glass rounded-3xl p-6">
+                                <h3 class="text-lg font-bold mb-4 flex items-center">
+                                    <i class="fas fa-chart-line mr-3"></i>
+                                    Результаты
+                                </h3>
+                                <div class="space-y-3 max-h-64 overflow-y-auto">
+                                    <div v-for="result in recentResults" 
+                                         :key="result.id"
+                                         class="p-3 glass rounded-xl">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <div class="font-semibold text-sm">{{ result.agent }}</div>
+                                            <div :class="['text-xs px-2 py-1 rounded', 
+                                                        result.status === 'completed' ? 'bg-green-500/20 text-green-400' : 
+                                                        result.status === 'failed' ? 'bg-red-500/20 text-red-400' : 
+                                                        'bg-yellow-500/20 text-yellow-400']">
+                                                {{ result.status }}
+                                            </div>
+                                        </div>
+                                        <div class="text-xs text-white/60">{{ result.task }}</div>
+                                        <div v-if="result.result" class="text-xs text-white/80 mt-2">{{ result.result }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics -->
+            <div v-if="currentTab === 'analytics'" class="fade-in">
+                <div class="mb-8">
+                    <h2 class="text-3xl font-bold mb-4">📊 Аналитика и мониторинг</h2>
+                    <p class="text-white/70">Отслеживайте производительность ваших ИИ агентов</p>
+                </div>
+
+                <!-- Metrics Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div v-for="metric in metrics" :key="metric.label" 
+                         class="glass rounded-2xl p-6 card-hover">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 rounded-xl flex items-center justify-center"
+                                 :style="{background: metric.gradient}">
+                                <i :class="metric.icon" class="text-xl text-white"></i>
+                            </div>
+                            <div :class="['text-sm px-2 py-1 rounded', 
+                                        metric.trend === 'up' ? 'bg-green-500/20 text-green-400' : 
+                                        metric.trend === 'down' ? 'bg-red-500/20 text-red-400' : 
+                                        'bg-gray-500/20 text-gray-400']">
+                                <i :class="metric.trend === 'up' ? 'fas fa-arrow-up' : 
+                                          metric.trend === 'down' ? 'fas fa-arrow-down' : 
+                                          'fas fa-minus'"></i>
+                                {{ metric.change }}
+                            </div>
+                        </div>
+                        <div class="text-3xl font-bold mb-2">{{ metric.value }}</div>
+                        <div class="text-white/60 text-sm">{{ metric.label }}</div>
+                    </div>
+                </div>
+
+                <!-- Charts Placeholder -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="glass rounded-3xl p-6">
+                        <h3 class="text-xl font-bold mb-6">Активность агентов</h3>
+                        <div class="h-64 flex items-center justify-center text-white/50">
+                            <div class="text-center">
+                                <i class="fas fa-chart-bar text-4xl mb-4"></i>
+                                <p>График активности агентов</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass rounded-3xl p-6">
+                        <h3 class="text-xl font-bold mb-6">Успешность задач</h3>
+                        <div class="h-64 flex items-center justify-center text-white/50">
+                            <div class="text-center">
+                                <i class="fas fa-chart-pie text-4xl mb-4"></i>
+                                <p>Круговая диаграмма успешности</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div v-if="currentTab === 'settings'" class="max-w-4xl mx-auto fade-in">
+                <div class="mb-8">
+                    <h2 class="text-3xl font-bold mb-4">⚙️ Настройки системы</h2>
+                    <p class="text-white/70">Настройте систему под ваши потребности</p>
+                </div>
+
+                <div class="space-y-8">
+                    <!-- AI Providers -->
+                    <div class="glass rounded-3xl p-8">
+                        <h3 class="text-xl font-bold mb-6">🤖 ИИ Провайдеры</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div v-for="provider in aiProviders" :key="provider.id"
+                                 class="glass rounded-xl p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                                            <i :class="provider.icon" class="text-lg text-white"></i>
+                                        </div>
+                                        <div>
+                                            <div class="font-semibold">{{ provider.name }}</div>
+                                            <div class="text-sm text-white/60">{{ provider.model }}</div>
+                                        </div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" v-model="provider.enabled" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                                <div v-if="provider.enabled" class="space-y-3">
+                                    <input v-model="provider.apiKey" 
+                                           type="password" 
+                                           :placeholder="'API ключ для ' + provider.name"
+                                           class="w-full glass rounded-lg px-4 py-2 bg-white/5 border-white/10">
+                                    <div class="flex items-center space-x-2">
+                                        <div :class="['w-3 h-3 rounded-full', 
+                                                    provider.status === 'connected' ? 'bg-green-500' : 
+                                                    provider.status === 'error' ? 'bg-red-500' : 'bg-gray-500']"></div>
+                                        <span class="text-sm text-white/60">{{ provider.statusText }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- General Settings -->
+                    <div class="glass rounded-3xl p-8">
+                        <h3 class="text-xl font-bold mb-6">🔧 Общие настройки</h3>
+                        <div class="space-y-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="font-semibold">Тёмная тема</div>
+                                    <div class="text-sm text-white/60">Переключение между светлой и тёмной темой</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" v-model="darkMode" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="font-semibold">Уведомления</div>
+                                    <div class="text-sm text-white/60">Push уведомления о завершении задач</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" v-model="notifications" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="font-semibold">Автосохранение</div>
+                                    <div class="text-sm text-white/60">Автоматическое сохранение воркфлоу</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" v-model="autoSave" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Floating Action Button -->
+        <div class="fixed bottom-8 right-8 z-50">
+            <button @click="showQuickActions = !showQuickActions" 
+                    class="w-16 h-16 btn-primary rounded-full shadow-2xl pulse-glow">
+                <i class="fas fa-plus text-xl"></i>
+            </button>
+            
+            <!-- Quick Actions Menu -->
+            <div v-if="showQuickActions" class="absolute bottom-20 right-0 space-y-3">
+                <div v-for="action in quickActions" :key="action.id"
+                     @click="action.handler"
+                     class="flex items-center space-x-3 glass rounded-full pr-6 pl-4 py-3 cursor-pointer hover:bg-white/10 slide-in">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                        <i :class="action.icon" class="text-sm text-white"></i>
+                    </div>
+                    <span class="whitespace-nowrap">{{ action.label }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="fixed top-24 right-6 space-y-3 z-40">
+            <div v-for="notification in notificationList" 
+                 :key="notification.id"
+                 class="notification rounded-2xl p-4 max-w-sm">
+                <div class="flex items-start space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                        <i :class="notification.icon" class="text-sm text-white"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-semibold">{{ notification.title }}</div>
+                        <div class="text-sm text-white/70">{{ notification.message }}</div>
+                    </div>
+                    <button @click="removeNotification(notification.id)" 
+                            class="text-white/50 hover:text-white">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modals will be added here -->
+        
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    // Core state
+                    currentTab: 'welcome',
+                    isConnected: false,
+                    progress: 0,
+                    
+                    // UI state
+                    showSettings: false,
+                    showQuickActions: false,
+                    showCreateAgent: false,
+                    isDragging: false,
+                    isExecuting: false,
+                    
+                    // Wizard
+                    currentWizardStep: 0,
+                    wizardData: {},
+                    
+                    // Settings
+                    darkMode: true,
+                    notifications: true,
+                    autoSave: true,
+                    
+                    // Data
+                    agents: [],
+                    workflowSteps: [],
+                    recentResults: [],
+                    notificationList: [],
+                    
+                    // UI Data
+                    agentSearch: '',
+                    executionMode: 'parallel',
+                    
+                    // Configuration
+                    tabs: [
+                        { id: 'welcome', name: 'Главная', icon: 'fas fa-home' },
+                        { id: 'playground', name: 'Песочница', icon: 'fas fa-play' },
+                        { id: 'analytics', name: 'Аналитика', icon: 'fas fa-chart-bar' },
+                        { id: 'settings', name: 'Настройки', icon: 'fas fa-cog' }
+                    ],
+                    
+                    features: [
+                        {
+                            id: 1,
+                            title: 'Drag & Drop интерфейс',
+                            description: 'Создавайте сложные воркфлоу простым перетаскиванием агентов',
+                            icon: 'fas fa-mouse-pointer',
+                            gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            buttonText: 'Попробовать',
+                            action: () => this.currentTab = 'playground'
+                        },
+                        {
+                            id: 2,
+                            title: 'Топовые ИИ модели',
+                            description: 'Доступ к лучшим моделям: GPT-4, Claude Opus, Gemini Pro',
+                            icon: 'fas fa-brain',
+                            gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                            buttonText: 'Настроить',
+                            action: () => this.currentTab = 'settings'
+                        },
+                        {
+                            id: 3,
+                            title: 'Готовые шаблоны',
+                            description: 'Библиотека проверенных сценариев для любых задач',
+                            icon: 'fas fa-templates',
+                            gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                            buttonText: 'Посмотреть',
+                            action: () => this.currentTab = 'playground'
+                        }
+                    ],
+                    
+                    stats: [
+                        { label: 'Агентов доступно', value: '12+' },
+                        { label: 'ИИ моделей', value: '6' },
+                        { label: 'Готовых шаблонов', value: '25+' },
+                        { label: 'Время экономии', value: '90%' }
+                    ],
+                    
+                    wizardSteps: [
+                        'Выбор задачи',
+                        'Настройка агентов', 
+                        'Конфигурация',
+                        'Готово'
+                    ],
+                    
+                    quickTemplates: [
+                        { id: 1, name: 'Создать сайт', steps: [1,2,3,4,5] },
+                        { id: 2, name: 'Исправить баг', steps: [1,2,3] },
+                        { id: 3, name: 'Анализ рынка', steps: [1,2,3,4] },
+                        { id: 4, name: 'Написать контент', steps: [1,2] }
+                    ],
+                    
+                    quickActions: [
+                        { id: 1, label: 'Новый воркфлоу', icon: 'fas fa-plus', handler: () => this.currentTab = 'playground' },
+                        { id: 2, label: 'Создать агента', icon: 'fas fa-robot', handler: () => this.showCreateAgent = true },
+                        { id: 3, label: 'Быстрая задача', icon: 'fas fa-bolt', handler: () => this.quickTask() },
+                        { id: 4, label: 'Помощь', icon: 'fas fa-question', handler: () => this.showHelp() }
+                    ],
+                    
+                    metrics: [
+                        { 
+                            label: 'Активных агентов', 
+                            value: '8', 
+                            icon: 'fas fa-users', 
+                            gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            trend: 'up',
+                            change: '+12%'
+                        },
+                        { 
+                            label: 'Задач выполнено', 
+                            value: '247', 
+                            icon: 'fas fa-check-circle', 
+                            gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                            trend: 'up',
+                            change: '+23%'
+                        },
+                        { 
+                            label: 'Время сэкономлено', 
+                            value: '48ч', 
+                            icon: 'fas fa-clock', 
+                            gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                            trend: 'up',
+                            change: '+8%'
+                        },
+                        { 
+                            label: 'Успешность', 
+                            value: '94%', 
+                            icon: 'fas fa-star', 
+                            gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+                            trend: 'up',
+                            change: '+2%'
+                        }
+                    ],
+                    
+                    aiProviders: [
+                        { 
+                            id: 'openai', 
+                            name: 'OpenAI', 
+                            model: 'GPT-4o & O3-mini',
+                            icon: 'fas fa-brain',
+                            enabled: false,
+                            apiKey: '',
+                            status: 'disconnected',
+                            statusText: 'Не подключен'
+                        },
+                        { 
+                            id: 'anthropic', 
+                            name: 'Anthropic', 
+                            model: 'Claude Opus 4',
+                            icon: 'fas fa-robot',
+                            enabled: false,
+                            apiKey: '',
+                            status: 'disconnected',
+                            statusText: 'Не подключен'
+                        },
+                        { 
+                            id: 'google', 
+                            name: 'Google', 
+                            model: 'Gemini 2.5 Pro',
+                            icon: 'fab fa-google',
+                            enabled: false,
+                            apiKey: '',
+                            status: 'disconnected',
+                            statusText: 'Не подключен'
+                        },
+                        { 
+                            id: 'openrouter', 
+                            name: 'OpenRouter', 
+                            model: 'Multiple Models',
+                            icon: 'fas fa-route',
+                            enabled: false,
+                            apiKey: '',
+                            status: 'disconnected',
+                            statusText: 'Не подключен'
+                        }
+                    ]
+                };
+            },
+            
+            computed: {
+                filteredAgents() {
+                    if (!this.agentSearch) return this.agents;
+                    return this.agents.filter(agent => 
+                        agent.name.toLowerCase().includes(this.agentSearch.toLowerCase()) ||
+                        agent.description.toLowerCase().includes(this.agentSearch.toLowerCase())
+                    );
+                }
+            },
+            
+            methods: {
+                // Navigation
+                startWizard() {
+                    this.currentTab = 'wizard';
+                    this.currentWizardStep = 0;
+                },
+                
+                nextWizardStep() {
+                    if (this.currentWizardStep < this.wizardSteps.length - 1) {
+                        this.currentWizardStep++;
+                    }
+                },
+                
+                prevWizardStep() {
+                    if (this.currentWizardStep > 0) {
+                        this.currentWizardStep--;
+                    }
+                },
+                
+                // Drag & Drop
+                dragStart(agent) {
+                    this.draggedAgent = agent;
+                    this.isDragging = true;
+                },
+                
+                dropAgent(event) {
+                    event.preventDefault();
+                    this.isDragging = false;
+                    
+                    if (this.draggedAgent) {
+                        this.workflowSteps.push({
+                            id: Date.now(),
+                            agent: this.draggedAgent,
+                            task: `Задача для ${this.draggedAgent.name}`
+                        });
+                        this.draggedAgent = null;
+                    }
+                },
+                
+                // Workflow Management
+                editStep(index) {
+                    // Implement step editing
+                    console.log('Edit step', index);
+                },
+                
+                removeStep(index) {
+                    this.workflowSteps.splice(index, 1);
+                },
+                
+                clearWorkflow() {
+                    this.workflowSteps = [];
+                },
+                
+                saveWorkflow() {
+                    this.showNotification('💾', 'Воркфлоу сохранён', 'Ваш воркфлоу успешно сохранён');
+                },
+                
+                executeWorkflow() {
+                    if (this.workflowSteps.length === 0) return;
+                    
+                    this.isExecuting = true;
+                    this.showNotification('🚀', 'Воркфлоу запущен', `${this.workflowSteps.length} агентов начали работу`);
+                    
+                    // Simulate execution
+                    setTimeout(() => {
+                        this.isExecuting = false;
+                        this.showNotification('✅', 'Воркфлоу завершён', 'Все задачи выполнены успешно');
+                        this.workflowSteps.forEach((step, index) => {
+                            setTimeout(() => {
+                                this.recentResults.unshift({
+                                    id: Date.now() + index,
+                                    agent: step.agent.name,
+                                    task: step.task,
+                                    status: 'completed',
+                                    result: `✅ ${step.agent.name} успешно выполнил задачу`
+                                });
+                            }, index * 1000);
+                        });
+                        
+                        // Confetti animation
+                        if (window.confetti) {
+                            confetti({
+                                particleCount: 100,
+                                spread: 70,
+                                origin: { y: 0.6 }
+                            });
+                        }
+                    }, 3000);
+                },
+                
+                loadTemplate(template) {
+                    // Simulate loading template
+                    this.workflowSteps = template.steps.map((step, index) => ({
+                        id: Date.now() + index,
+                        agent: this.agents[index % this.agents.length] || { name: 'Agent', emoji: '🤖' },
+                        task: `Шаг ${index + 1} из шаблона "${template.name}"`
+                    }));
+                },
+                
+                // Notifications
+                showNotification(icon, title, message) {
+                    const notification = {
+                        id: Date.now(),
+                        icon,
+                        title,
+                        message
+                    };
+                    
+                    this.notificationList.push(notification);
+                    
+                    // Auto remove after 5 seconds
+                    setTimeout(() => {
+                        this.removeNotification(notification.id);
+                    }, 5000);
+                },
+                
+                removeNotification(id) {
+                    const index = this.notificationList.findIndex(n => n.id === id);
+                    if (index > -1) {
+                        this.notificationList.splice(index, 1);
+                    }
+                },
+                
+                // Quick Actions
+                quickTask() {
+                    this.showNotification('⚡', 'Быстрая задача', 'Функция в разработке');
+                },
+                
+                showHelp() {
+                    this.showNotification('💡', 'Помощь', 'Документация скоро будет доступна');
+                },
+                
+                // Data Loading
+                loadMockData() {
+                    this.agents = [
+                        { id: 'researcher', name: 'Исследователь', description: 'Поиск и анализ информации', emoji: '🔍', status: 'idle' },
+                        { id: 'coder', name: 'Программист', description: 'Написание и оптимизация кода', emoji: '💻', status: 'idle' },
+                        { id: 'designer', name: 'Дизайнер', description: 'UI/UX дизайн и прототипы', emoji: '🎨', status: 'idle' },
+                        { id: 'tester', name: 'Тестировщик', description: 'Тестирование и отладка', emoji: '🧪', status: 'idle' },
+                        { id: 'analyst', name: 'Аналитик', description: 'Анализ данных и метрик', emoji: '📊', status: 'idle' },
+                        { id: 'writer', name: 'Копирайтер', description: 'Создание текстового контента', emoji: '✍️', status: 'idle' },
+                        { id: 'marketer', name: 'Маркетолог', description: 'Маркетинговые стратегии', emoji: '📢', status: 'idle' },
+                        { id: 'manager', name: 'Менеджер', description: 'Управление проектами', emoji: '👔', status: 'idle' }
+                    ];
+                    
+                    // Simulate connection
+                    setTimeout(() => {
+                        this.isConnected = true;
+                    }, 1000);
+                },
+                
+                // Progress simulation
+                simulateProgress() {
+                    let progress = 0;
+                    const interval = setInterval(() => {
+                        progress += Math.random() * 10;
+                        this.progress = Math.min(progress, 100);
+                        
+                        if (this.progress >= 100) {
+                            clearInterval(interval);
+                            setTimeout(() => {
+                                this.progress = 0;
+                            }, 1000);
+                        }
+                    }, 200);
+                }
+            },
+            
+            mounted() {
+                this.loadMockData();
+                
+                // Simulate some activity
+                setTimeout(() => {
+                    this.showNotification('🎉', 'Добро пожаловать!', 'Система готова к работе');
+                }, 2000);
+                
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey || e.metaKey) {
+                        switch (e.key) {
+                            case '1':
+                                e.preventDefault();
+                                this.currentTab = 'welcome';
+                                break;
+                            case '2':
+                                e.preventDefault();
+                                this.currentTab = 'playground';
+                                break;
+                            case '3':
+                                e.preventDefault();
+                                this.currentTab = 'analytics';
+                                break;
+                            case '4':
+                                e.preventDefault();
+                                this.currentTab = 'settings';
+                                break;
+                        }
+                    }
+                });
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
